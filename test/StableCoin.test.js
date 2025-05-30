@@ -2,11 +2,11 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
 describe("StableCoin", function () {
-    let StableCoin, stableCoin, owner, addr1, addr2;
+    let StableCoin, stableCoin, owner, addr1;
 
     beforeEach(async function () {
         StableCoin = await ethers.getContractFactory("StableCoin");
-        [owner, addr1, addr2] = await ethers.getSigners();
+        [owner, addr1] = await ethers.getSigners();
         stableCoin = await StableCoin.deploy();
         await stableCoin.waitForDeployment();        
     });
@@ -76,11 +76,53 @@ describe("StableCoin", function () {
         });
     });
 
+    describe("Issue Reward Function", function () {
+        it("Should issue rewards to the specified address by the owner", async function () {
+            await stableCoin.issueReward(addr1.address, 100);
+            expect(await stableCoin.rewards(addr1.address)).to.equal(100);
+        });
 
+        it("Should increase the total supply when rewards are issued", async function () {
+            await stableCoin.issueReward(addr1.address, 100);
+            expect(await stableCoin.totalSupply()).to.equal(1100);
+        });
 
+        it("Should emit a RewardIssued event when rewards are issued", async function () {
+            await expect(stableCoin.issueReward(addr1.address, 100))
+             .to.emit(stableCoin, "RewardIssued")
+             .withArgs(addr1.address, 100);
+        });
 
+        it("Should revert if a non-owner tries to issue rewards", async function () {
+            await expect(
+                stableCoin.connect(addr1).issueReward(addr1.address, 100)
+            ).to.be.revertedWith("Not the contract owner");
+        });
+    });
 
+    describe("Claim Reward Function", function () {
+        beforeEach(async function () {
+            await stableCoin.issueReward(addr1.address, 100);
+        });
 
+        it("Should allow a user to claim their rewards and increase token balance", async function () {
+            await stableCoin.connect(addr1).claimReward(50);
+            expect(await stableCoin.balanceOf(addr1.address)).to.equal(50);
+            expect(await stableCoin.rewards(addr1.address)).to.equal(50);
+        });
 
+        it("Should revert if trying to claim more rewards than available", async function () {
+            await expect(
+                stableCoin.connect(addr1).claimReward(150)
+            ).to.be.revertedWith("Claim amount exceeds rewards balance");
+        });
+
+        it("Should revert if there are no rewards to claim", async function () {
+            await stableCoin.connect(addr1).claimReward(100);
+            await expect(
+                stableCoin.connect(addr1).claimReward(1)
+            ).to.be.revertedWith("No rewards to claim");
+        });
+    });
 
 });
