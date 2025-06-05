@@ -7,7 +7,6 @@ contract StableCoin {
     uint256 public totalSupply;
 
     mapping(address => uint256) public balanceOf;
-    mapping(address => uint256) public rewards;
 
     address public owner;
 
@@ -17,7 +16,6 @@ contract StableCoin {
     }
 
     event Transfer(address indexed from, address indexed to, uint256 value);
-    event RewardIssued(address indexed to, uint256 value);
 
     constructor() {
         owner = msg.sender;
@@ -46,27 +44,6 @@ contract StableCoin {
         balanceOf[to] += amount;
         emit Transfer(msg.sender, to, amount);
         return true;
-    }
-
-    function issueReward(address to, uint256 amount) public onlyOwner {
-        require(to != address(0), "Cannot issue reward to zero address");
-        totalSupply += amount;    
-        rewards[to] += amount;       
-        emit RewardIssued(to, amount);
-    }
-    
-    function claimReward(uint256 amount) public {
-        uint256 reward = rewards[msg.sender];
-        require(reward > 0, "No rewards to claim");
-        require(amount <= reward, "Claim amount exceeds rewards balance");
-        rewards[msg.sender] -= amount;
-        balanceOf[msg.sender] += amount;
-        emit Transfer(address(0), msg.sender, amount);
-    }
-
-    function getBalances(address account) public view returns (uint256 tokenBalance, uint256 rewardBalance) {
-        tokenBalance = balanceOf[account];
-        rewardBalance = rewards[account];
     }
 
 }

@@ -1,6 +1,6 @@
 async function  main() {
     // The address of the deployed StableCoin contract
-    const contractAddress = "0xD0f015dFD7516b1E3771E53F61663E4B108f85EA";
+    const contractAddress = "0x7245DD72025d4D4BE79051c99562Acf592a7eeDe";
 
     // Get the contract factory
     const StableCoin = await ethers.getContractFactory("StableCoin");
