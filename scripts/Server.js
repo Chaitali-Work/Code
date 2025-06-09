@@ -19,11 +19,15 @@ const stableCoinAbi = [
     "event Transfer(address indexed from, address indexed to, uint256 value)",
     "function mint(address to, uint256 amount) public",
     "function burn(uint256 amount) public",
-    "function transfer(address to, uint256 amount) public returns (bool)"
+    "function transfer(address to, uint256 amount) public returns (bool)",
+    "function rewards(address account) public view returns (uint256)",
+    "event RewardIssued(address indexed to, uint256 value)",
+    "function issueReward(address to, uint256 amount) public",
+    "function claimReward(uint256 amount) public"
 ];
 
 // Address of the deployed StableCoin contract
-const stableCoinAddress = '0x7245DD72025d4D4BE79051c99562Acf592a7eeDe';
+const stableCoinAddress = '0xD0f015dFD7516b1E3771E53F61663E4B108f85EA';
 const stableCoinContract = new ethers.Contract(stableCoinAddress, stableCoinAbi, wallet);
 
 // GET endpoint to retrieve the name of token
@@ -69,7 +73,19 @@ app.get('/balance/:address', async (req, res) => {
         console.error(error);
         res.status(500).send('Error retrieving balance');
     }
-})
+});
+
+// GET endpoint to retrieve the rewards of an address
+app.get('/reward/:address', async (req, res) => {
+    try {
+        const address = req.params.address;
+        const reward = await stableCoinContract.rewards(address);
+        res.json({ address, reward: reward.toString() });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Error retrieving rewards');
+    }
+});
 
 // POST endpoint to mint new coins
 app.post('/mint', async (req, res) => {
@@ -111,12 +127,61 @@ app.post('/burn', async (req, res) => {
 app.post('/transfer', async (req, res) => {
     try {
         const { to, amount } = req.body;
+        const senderAddress = wallet.address;
+        // Check if the 'to' address is the zero address
+        if (to === ethers.ZeroAddress) {
+            return res.status(400).send('Cannot transfer to zero address');
+        }
+        // Check the sender's balance before attempting to transfer
+        const balance = await stableCoinContract.balanceOf(senderAddress);
+        if (balance <= amount) {
+            return res.status(400).send('Insufficient balance to transfer the specified amount');
+        }
         const tx = await stableCoinContract.transfer(to, amount);
         await tx.wait(); // Wait for transaction to be mined
         res.send('Transfer successful');
     } catch (error) {
         console.error(error);
         res.status(500).send('Error transferring tokens');
+    }
+});
+
+// POST endpoint to issue rewards
+app.post('/issueReward', async (req, res) => {
+    try {
+        const { to, amount } = req.body;
+        // Check if the 'to' address is the zero address
+        if (to === ethers.ZeroAddress) {
+            return res.status(400).send('Cannot issue rewards to zero address');
+        }
+        const tx = await stableCoinContract.issueReward(to, amount);
+        await tx.wait(); // Wait for the transaction to be mined
+        res.send('Reward issued successfully');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Error issuing reward');
+    }
+});
+
+// POST endpoint to claim rewards
+app.post('/claimReward', async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const senderAddress = wallet.address;
+        // Check the sender's reward balance  before attempting to claim
+        const rewardBalance = await stableCoinContract.rewards(senderAddress);
+        if (rewardBalance <= 0) {
+            return res.status(400).send('No rewards to claim');
+        }
+        if (amount > rewardBalance) {
+            return res.status(400).send('Claim amount exceeds reward balance');
+        }
+        const tx = await stableCoinContract.claimReward(amount);
+        await tx.wait(); // Wait for the trasaction to be mined
+        res.send('Reward claimed successfully');
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Error claiming reward');
     }
 });
 
