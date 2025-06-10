@@ -83,7 +83,7 @@ app.get('/reward/:address', async (req, res) => {
         res.json({ address, reward: reward.toString() });
     } catch (error) {
         console.error(error);
-        res.status(500).send('Error retrieving rewards');
+        res.status(500).send('Error retrieving reward balance');
     }
 });
 
@@ -93,11 +93,11 @@ app.post('/mint', async (req, res) => {
         const { to, amount } = req.body;
         // Check if the 'to' address is the zero address
         if (to === ethers.ZeroAddress) {
-            return res.status(400).send('Cannot mint to zero address');
+            return res.status(400).send('You cannot mint to zero address!');
         }
         const tx = await stableCoinContract.mint(to, amount);
         await tx.wait(); // Wait for transaction to be mined
-        res.send('Minting successful');
+        res.send(`Congratulations! You have successfully minted ${amount} SE to ${to}`);
     } catch (error) {
         console.error(error);
         res.status(500).send('Error minting coins');
@@ -112,11 +112,11 @@ app.post('/burn', async (req, res) => {
         // Check the sender's balance before attempting to burn
         const balance = await stableCoinContract.balanceOf(senderAddress);
         if (balance <= amount) {
-            return res.status(400).send('Burning amount exceeds coin balance');
+            return res.status(400).send(`Burning ${amount} SE exceeds coin balance ${balance} SE!`);
         }
         const tx = await stableCoinContract.burn(amount);
         await tx.wait(); // Wait for transaction to be mined
-        res.send('Burning successful');
+        res.send(`You have successfully burned ${amount} SE from your account ${senderAddress}!`);
     } catch (error) {
         console.error(error);
         res.status(500).send('Error burning coins');
@@ -130,16 +130,16 @@ app.post('/transfer', async (req, res) => {
         const senderAddress = wallet.address;
         // Check if the 'to' address is the zero address
         if (to === ethers.ZeroAddress) {
-            return res.status(400).send('Cannot transfer to zero address');
+            return res.status(400).send('You cannot transfer to zero address!');
         }
         // Check the sender's balance before attempting to transfer
         const balance = await stableCoinContract.balanceOf(senderAddress);
         if (balance <= amount) {
-            return res.status(400).send('Insufficient balance to transfer the specified amount');
+            return res.status(400).send(`The transfer amount ${amount} SE exceeds coin balance ${balance} SE from your account ${senderAddress}!`);
         }
         const tx = await stableCoinContract.transfer(to, amount);
         await tx.wait(); // Wait for transaction to be mined
-        res.send('Transfer successful');
+        res.send(`Congratulations! You have successfully transferred ${amount} SE to ${to}`);
     } catch (error) {
         console.error(error);
         res.status(500).send('Error transferring tokens');
@@ -152,11 +152,11 @@ app.post('/issueReward', async (req, res) => {
         const { to, amount } = req.body;
         // Check if the 'to' address is the zero address
         if (to === ethers.ZeroAddress) {
-            return res.status(400).send('Cannot issue rewards to zero address');
+            return res.status(400).send('You cannot issue rewards to zero address!');
         }
         const tx = await stableCoinContract.issueReward(to, amount);
         await tx.wait(); // Wait for the transaction to be mined
-        res.send('Reward issued successfully');
+        res.send(`Congratulations! You have successfully issued ${amount} rewards to ${to}`);
     } catch (error) {
         console.error(error);
         res.status(500).send('Error issuing reward');
@@ -171,14 +171,14 @@ app.post('/claimReward', async (req, res) => {
         // Check the sender's reward balance  before attempting to claim
         const rewardBalance = await stableCoinContract.rewards(senderAddress);
         if (rewardBalance <= 0) {
-            return res.status(400).send('No rewards to claim');
+            return res.status(400).send('You have no rewards to claim!');
         }
         if (amount > rewardBalance) {
-            return res.status(400).send('Claim amount exceeds reward balance');
+            return res.status(400).send(`Your claimed amount ${amount} exceeds reward balance ${rewardBalance} SE!`);
         }
         const tx = await stableCoinContract.claimReward(amount);
         await tx.wait(); // Wait for the trasaction to be mined
-        res.send('Reward claimed successfully');
+        res.send(`Congratulations! You have successfully claimed ${amount} rewards`);
     } catch (error) {
         console.error(error);
         res.status(500).send('Error claiming reward');
